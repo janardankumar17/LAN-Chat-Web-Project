@@ -1,0 +1,1423 @@
+/* =========================================
+   GLOBAL
+========================================= */
+
+:root {
+
+    --background: #f5f7fb;
+
+    --surface: #ffffff;
+
+    --surface-hover: #f0f2f7;
+
+    --border: #e5e7eb;
+
+    --text: #111827;
+
+    --muted: #6b7280;
+
+    --primary: #4f46e5;
+
+    --primary-hover: #4338ca;
+
+    --success: #22c55e;
+
+    --danger: #ef4444;
+
+}
+
+
+* {
+
+    box-sizing: border-box;
+
+    margin: 0;
+
+    padding: 0;
+
+}
+
+
+body {
+
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
+
+    background: var(--background);
+
+    color: var(--text);
+
+    height: 100vh;
+
+    overflow: hidden;
+
+}
+
+
+button,
+input {
+
+    font-family: inherit;
+
+}
+
+
+/* =========================================
+   HIDDEN
+========================================= */
+
+.hidden {
+
+    display: none !important;
+
+}
+
+
+/* =========================================
+   LOGIN SCREEN
+========================================= */
+
+.login-screen {
+
+    width: 100%;
+
+    height: 100vh;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    background: var(--background);
+
+}
+
+
+.login-card {
+
+    width: 100%;
+
+    max-width: 420px;
+
+    margin: 20px;
+
+    padding: 40px;
+
+    background: var(--surface);
+
+    border: 1px solid var(--border);
+
+    border-radius: 20px;
+
+    text-align: center;
+
+    box-shadow:
+        0 20px 50px rgba(0, 0, 0, 0.08);
+
+}
+
+
+.login-icon {
+
+    width: 70px;
+
+    height: 70px;
+
+    margin: 0 auto 20px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 18px;
+
+    background: var(--primary);
+
+    font-size: 32px;
+
+}
+
+
+.login-card h1 {
+
+    font-size: 30px;
+
+    margin-bottom: 8px;
+
+}
+
+
+.login-card p {
+
+    color: var(--muted);
+
+    margin-bottom: 28px;
+
+}
+
+
+.login-form {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 12px;
+
+}
+
+
+.login-form input {
+
+    width: 100%;
+
+    padding: 14px 16px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 12px;
+
+    outline: none;
+
+    font-size: 15px;
+
+    transition:
+        border 0.2s ease,
+        box-shadow 0.2s ease;
+
+}
+
+
+.login-form input:focus {
+
+    border-color: var(--primary);
+
+    box-shadow:
+        0 0 0 3px rgba(79, 70, 229, 0.1);
+
+}
+
+
+.login-form button {
+
+    border: none;
+
+    padding: 14px;
+
+    border-radius: 12px;
+
+    background: var(--primary);
+
+    color: white;
+
+    font-size: 15px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+
+}
+
+
+.login-form button:hover {
+
+    background: var(--primary-hover);
+
+    transform: translateY(-1px);
+
+}
+
+
+/* =========================================
+   CHAT APP
+========================================= */
+
+.chat-app {
+
+    height: 100vh;
+
+    display: flex;
+
+    flex-direction: column;
+
+}
+
+
+/* =========================================
+   TOP BAR
+========================================= */
+
+.topbar {
+
+    height: 70px;
+
+    flex-shrink: 0;
+
+    display: flex;
+
+    align-items: center;
+
+    padding: 0 24px;
+
+    background: var(--surface);
+
+    border-bottom: 1px solid var(--border);
+
+}
+
+
+.brand {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+}
+
+
+.brand-icon {
+
+    width: 42px;
+
+    height: 42px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 12px;
+
+    background: var(--primary);
+
+    font-size: 21px;
+
+}
+
+
+.brand h1 {
+
+    font-size: 18px;
+
+}
+
+
+.brand span {
+
+    display: block;
+
+    margin-top: 2px;
+
+    font-size: 12px;
+
+    color: var(--muted);
+
+}
+
+
+/* =========================================
+   CHAT LAYOUT
+========================================= */
+
+.chat-layout {
+
+    flex: 1;
+
+    min-height: 0;
+
+    display: flex;
+
+}
+
+
+/* =========================================
+   SIDEBAR
+========================================= */
+
+.sidebar {
+
+    width: 280px;
+
+    flex-shrink: 0;
+
+    background: var(--surface);
+
+    border-right: 1px solid var(--border);
+
+    overflow-y: auto;
+
+}
+
+
+.sidebar-header {
+
+    height: 65px;
+
+    padding: 0 20px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    border-bottom: 1px solid var(--border);
+
+}
+
+
+.sidebar-header h2 {
+
+    font-size: 16px;
+
+}
+
+
+.sidebar-header span {
+
+    min-width: 28px;
+
+    height: 28px;
+
+    padding: 0 8px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 8px;
+
+    background: var(--surface-hover);
+
+    color: var(--muted);
+
+    font-size: 12px;
+
+    font-weight: 600;
+
+}
+
+
+/* =========================================
+   PUBLIC CHAT
+========================================= */
+
+.public-chat {
+
+    position: relative;
+
+    margin: 12px;
+
+    padding: 12px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+    border-radius: 12px;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease;
+
+}
+
+
+.public-chat:hover {
+
+    background: var(--surface-hover);
+
+}
+
+
+.public-chat.active {
+
+    background: rgba(79, 70, 229, 0.1);
+
+}
+
+
+.public-chat-icon {
+
+    width: 40px;
+
+    height: 40px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background: var(--primary);
+
+    color: white;
+
+}
+
+
+.public-chat-info {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 3px;
+
+}
+
+
+.public-chat-info strong {
+
+    font-size: 14px;
+
+}
+
+
+.public-chat-info span {
+
+    font-size: 12px;
+
+    color: var(--muted);
+
+}
+
+
+/* =========================================
+   ONLINE HEADING
+========================================= */
+
+.online-heading {
+
+    padding: 12px 20px 8px;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.5px;
+
+    color: var(--muted);
+
+}
+
+
+/* =========================================
+   USER LIST
+========================================= */
+
+.user-list {
+
+    padding: 0 12px 20px;
+
+}
+
+
+.user {
+
+    position: relative;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 11px 12px;
+
+    margin-bottom: 4px;
+
+    border-radius: 10px;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease;
+
+}
+
+
+.user:hover {
+
+    background: var(--surface-hover);
+
+}
+
+
+.user.selected-user {
+
+    background: rgba(79, 70, 229, 0.1);
+
+}
+
+
+.user.current-user {
+
+    cursor: default;
+
+}
+
+
+.online-dot {
+
+    width: 9px;
+
+    height: 9px;
+
+    flex-shrink: 0;
+
+    border-radius: 50%;
+
+    background: var(--success);
+
+}
+
+
+.user span:last-child {
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+    font-size: 14px;
+
+}
+
+
+/* =========================================
+   UNREAD
+========================================= */
+
+.has-unread {
+
+    background: rgba(79, 70, 229, 0.06);
+
+}
+
+
+.unread-badge {
+
+    margin-left: auto;
+
+    min-width: 20px;
+
+    height: 20px;
+
+    padding: 0 5px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background: var(--primary);
+
+    color: white;
+
+    font-size: 10px;
+
+    font-weight: 700;
+
+}
+
+
+/* =========================================
+   CHAT PANEL
+========================================= */
+
+.chat-panel {
+
+    flex: 1;
+
+    min-width: 0;
+
+    display: flex;
+
+    flex-direction: column;
+
+    background: var(--background);
+
+}
+
+
+/* =========================================
+   CHAT HEADER
+========================================= */
+
+.chat-header {
+
+    height: 70px;
+
+    flex-shrink: 0;
+
+    padding: 0 24px;
+
+    display: flex;
+
+    align-items: center;
+
+    background: var(--surface);
+
+    border-bottom: 1px solid var(--border);
+
+}
+
+
+.chat-header-left {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+}
+
+
+.chat-header-icon {
+
+    width: 42px;
+
+    height: 42px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 12px;
+
+    background: var(--surface-hover);
+
+}
+
+
+.chat-header h2 {
+
+    font-size: 16px;
+
+}
+
+
+.chat-header span {
+
+    display: block;
+
+    margin-top: 3px;
+
+    color: var(--muted);
+
+    font-size: 12px;
+
+}
+
+
+/* =========================================
+   MESSAGES
+========================================= */
+
+.messages {
+
+    flex: 1;
+
+    min-height: 0;
+
+    overflow-y: auto;
+
+    padding: 24px;
+
+}
+
+
+.message {
+
+    max-width: 70%;
+
+    margin-bottom: 16px;
+
+}
+
+
+.own-message {
+
+    margin-left: auto;
+
+}
+
+
+.other-message {
+
+    margin-right: auto;
+
+}
+
+
+.message-meta {
+
+    margin-bottom: 5px;
+
+    font-size: 11px;
+
+    color: var(--muted);
+
+}
+
+
+.own-message .message-meta {
+
+    text-align: right;
+
+}
+
+
+.message-bubble {
+
+    padding: 11px 14px;
+
+    border-radius: 14px;
+
+    background: var(--surface);
+
+    border: 1px solid var(--border);
+
+    line-height: 1.45;
+
+    font-size: 14px;
+
+    overflow-wrap: anywhere;
+
+}
+
+
+.own-message .message-bubble {
+
+    background: var(--primary);
+
+    color: white;
+
+    border-color: var(--primary);
+
+}
+
+
+/* =========================================
+   SYSTEM MESSAGE
+========================================= */
+
+.system-message {
+
+    width: 100%;
+
+    margin: 12px 0;
+
+    text-align: center;
+
+    color: var(--muted);
+
+    font-size: 12px;
+
+}
+
+
+/* =========================================
+   EMPTY STATE
+========================================= */
+
+.empty-state {
+
+    height: 100%;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+    text-align: center;
+
+    color: var(--muted);
+
+}
+
+
+.empty-state > div {
+
+    font-size: 42px;
+
+    margin-bottom: 12px;
+
+}
+
+
+.empty-state h2 {
+
+    margin-bottom: 6px;
+
+    color: var(--text);
+
+    font-size: 20px;
+
+}
+
+
+.empty-state p {
+
+    font-size: 14px;
+
+}
+
+
+/* =========================================
+   MESSAGE AREA
+========================================= */
+
+.message-area {
+
+    padding: 12px 18px 18px;
+
+    background: var(--surface);
+
+    border-top: 1px solid var(--border);
+
+}
+
+
+/* =========================================
+   FILE PREVIEW
+========================================= */
+
+.file-preview {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    width: 100%;
+
+    margin-bottom: 8px;
+
+    padding: 10px 12px;
+
+    border-radius: 12px;
+
+    background: var(--surface-hover);
+
+    border: 1px solid var(--border);
+
+    animation:
+        filePreviewIn 0.2s ease;
+
+}
+
+
+.file-preview.hidden {
+
+    display: none;
+
+}
+
+
+.file-preview-info {
+
+    min-width: 0;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+}
+
+
+.file-preview-icon {
+
+    width: 36px;
+
+    height: 36px;
+
+    flex-shrink: 0;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 9px;
+
+    background: var(--surface);
+
+    font-size: 18px;
+
+}
+
+
+.file-preview-details {
+
+    min-width: 0;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 2px;
+
+}
+
+
+#filePreviewName {
+
+    max-width: 500px;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+}
+
+
+#filePreviewSize {
+
+    font-size: 11px;
+
+    color: var(--muted);
+
+}
+
+
+.remove-file-button {
+
+    width: 30px;
+
+    height: 30px;
+
+    flex-shrink: 0;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border: none;
+
+    border-radius: 8px;
+
+    background: transparent;
+
+    color: var(--muted);
+
+    cursor: pointer;
+
+    font-size: 14px;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        transform 0.2s ease;
+
+}
+
+
+.remove-file-button:hover {
+
+    background: rgba(239, 68, 68, 0.1);
+
+    color: var(--danger);
+
+    transform: scale(1.05);
+
+}
+
+
+.remove-file-button:active {
+
+    transform: scale(0.95);
+
+}
+
+
+@keyframes filePreviewIn {
+
+    from {
+
+        opacity: 0;
+
+        transform: translateY(4px);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform: translateY(0);
+
+    }
+
+}
+
+
+/* =========================================
+   MESSAGE FORM
+========================================= */
+
+.message-form {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+}
+
+
+.message-form input[type="text"] {
+
+    flex: 1;
+
+    min-width: 0;
+
+    height: 46px;
+
+    padding: 0 14px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 12px;
+
+    outline: none;
+
+    background: var(--surface);
+
+    color: var(--text);
+
+    font-size: 14px;
+
+    transition:
+        border 0.2s ease,
+        box-shadow 0.2s ease;
+
+}
+
+
+.message-form input[type="text"]:focus {
+
+    border-color: var(--primary);
+
+    box-shadow:
+        0 0 0 3px rgba(79, 70, 229, 0.08);
+
+}
+
+
+/* =========================================
+   ATTACH BUTTON
+========================================= */
+
+.attach-button {
+
+    width: 46px;
+
+    min-width: 46px;
+
+    height: 46px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 0;
+
+    border: none;
+
+    border-radius: 12px;
+
+    background: var(--surface-hover);
+
+    color: var(--text);
+
+    font-size: 20px;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+
+}
+
+
+.attach-button:hover {
+
+    background: var(--border);
+
+    transform: translateY(-1px);
+
+}
+
+
+.attach-button:active {
+
+    transform: scale(0.95);
+
+}
+
+
+/* =========================================
+   SEND BUTTON
+========================================= */
+
+.send-button {
+
+    height: 46px;
+
+    padding: 0 20px;
+
+    border: none;
+
+    border-radius: 12px;
+
+    background: var(--primary);
+
+    color: white;
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+
+}
+
+
+.send-button:hover {
+
+    background: var(--primary-hover);
+
+    transform: translateY(-1px);
+
+}
+
+
+.send-button:active {
+
+    transform: scale(0.97);
+
+}
+
+
+/* =========================================
+   SCROLLBAR
+========================================= */
+
+.messages::-webkit-scrollbar,
+.sidebar::-webkit-scrollbar {
+
+    width: 6px;
+
+}
+
+
+.messages::-webkit-scrollbar-thumb,
+.sidebar::-webkit-scrollbar-thumb {
+
+    border-radius: 10px;
+
+    background: #d1d5db;
+
+}
+
+
+.messages::-webkit-scrollbar-track,
+.sidebar::-webkit-scrollbar-track {
+
+    background: transparent;
+
+}
+
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 700px) {
+
+    .sidebar {
+
+        width: 220px;
+
+    }
+
+
+    .topbar {
+
+        padding: 0 14px;
+
+    }
+
+
+    .chat-header {
+
+        padding: 0 14px;
+
+    }
+
+
+    .messages {
+
+        padding: 16px;
+
+    }
+
+
+    .message {
+
+        max-width: 85%;
+
+    }
+
+
+    .message-area {
+
+        padding: 10px;
+
+    }
+
+
+    .send-button {
+
+        padding: 0 14px;
+
+    }
+
+
+    #filePreviewName {
+
+        max-width: 220px;
+
+    }
+
+}
+
+
+@media (max-width: 520px) {
+
+    .sidebar {
+
+        width: 190px;
+
+    }
+
+
+    .brand h1 {
+
+        font-size: 16px;
+
+    }
+
+
+    .public-chat-info span {
+
+        display: none;
+
+    }
+
+
+    .user {
+
+        padding: 10px 8px;
+
+    }
+
+
+    .chat-header h2 {
+
+        font-size: 14px;
+
+    }
+
+
+    .message-form {
+
+        gap: 5px;
+
+    }
+
+
+    .attach-button {
+
+        width: 40px;
+
+        min-width: 40px;
+
+        height: 40px;
+
+    }
+
+
+    .send-button {
+
+        height: 40px;
+
+        padding: 0 12px;
+
+    }
+
+
+    .message-form input[type="text"] {
+
+        height: 40px;
+
+    }
+
+}

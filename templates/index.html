@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>LAN Chat</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+
+<!-- =========================================
+     LOGIN SCREEN
+========================================= -->
+
+<div
+    id="loginScreen"
+    class="login-screen"
+>
+
+    <div class="login-card">
+
+        <div class="login-icon">
+            💬
+        </div>
+
+        <h1>
+            LAN Chat
+        </h1>
+
+        <p>
+            Real-time chat over your local network
+        </p>
+
+
+        <div class="login-form">
+
+            <input
+                id="usernameInput"
+                type="text"
+                placeholder="Enter your username"
+                maxlength="20"
+                autocomplete="off"
+            >
+
+            <button
+                id="joinButton"
+                type="button"
+            >
+                Join Chat
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================
+     CHAT APPLICATION
+========================================= -->
+
+<div
+    id="chatApp"
+    class="chat-app hidden"
+>
+
+
+    <!-- =====================================
+         TOP BAR
+    ====================================== -->
+
+    <header class="topbar">
+
+        <div class="brand">
+
+            <div class="brand-icon">
+                💬
+            </div>
+
+            <div>
+
+                <h1>
+                    LAN Chat
+                </h1>
+
+                <span id="connectionStatus">
+                    ● Connecting...
+                </span>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- =====================================
+         MAIN CHAT AREA
+    ====================================== -->
+
+    <div class="chat-layout">
+
+
+        <!-- =================================
+             SIDEBAR
+        ================================== -->
+
+        <aside class="sidebar">
+
+
+            <div class="sidebar-header">
+
+                <h2>
+                    Chats
+                </h2>
+
+                <span id="userCount">
+                    0
+                </span>
+
+            </div>
+
+
+            <!-- PUBLIC CHAT -->
+
+            <div
+                id="publicChatButton"
+                class="public-chat"
+            >
+
+                <span class="public-chat-icon">
+                    💬
+                </span>
+
+                <div class="public-chat-info">
+
+                    <strong>
+                        Public Chat
+                    </strong>
+
+                    <span>
+                        Everyone
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <!-- ONLINE USERS -->
+
+            <div class="online-heading">
+
+                <span>
+                    Online Users
+                </span>
+
+            </div>
+
+
+            <div
+                id="userList"
+                class="user-list"
+            >
+            </div>
+
+
+        </aside>
+
+
+
+        <!-- =================================
+             CHAT PANEL
+        ================================== -->
+
+        <main class="chat-panel">
+
+
+            <!-- CHAT HEADER -->
+
+            <div class="chat-header">
+
+                <div class="chat-header-left">
+
+                    <div class="chat-header-icon">
+                        💬
+                    </div>
+
+                    <div>
+
+                        <h2 id="chatTitle">
+                            Public Chat
+                        </h2>
+
+                        <span id="chatStatus">
+                            Everyone
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================
+                 MESSAGES
+            ================================== -->
+
+            <div
+                id="messages"
+                class="messages"
+            >
+            </div>
+
+
+
+            <!-- =================================
+                 MESSAGE AREA
+            ================================== -->
+
+            <div class="message-area">
+
+
+                <!-- FILE PREVIEW -->
+
+                <div
+                    id="filePreview"
+                    class="file-preview hidden"
+                >
+
+                    <div class="file-preview-info">
+
+                        <span class="file-preview-icon">
+                            📎
+                        </span>
+
+                        <div class="file-preview-details">
+
+                            <span id="filePreviewName">
+                                filename
+                            </span>
+
+                            <span id="filePreviewSize">
+                                0 KB
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <button
+                        type="button"
+                        id="removeFileButton"
+                        class="remove-file-button"
+                        title="Remove file"
+                    >
+                        ✕
+                    </button>
+
+                </div>
+
+
+
+                <!-- MESSAGE FORM -->
+
+                <form
+                    id="messageForm"
+                    class="message-form"
+                >
+
+
+                    <!-- FILE INPUT -->
+
+                    <input
+                        id="fileInput"
+                        type="file"
+                        hidden
+                    >
+
+
+                    <!-- ATTACH BUTTON -->
+
+                    <button
+                        type="button"
+                        id="attachButton"
+                        class="attach-button"
+                        title="Attach file"
+                    >
+                        📎
+                    </button>
+
+
+                    <!-- MESSAGE INPUT -->
+
+                    <input
+                        id="messageInput"
+                        type="text"
+                        placeholder="Type a message..."
+                        autocomplete="off"
+                        maxlength="1000"
+                    >
+
+
+                    <!-- SEND BUTTON -->
+
+                    <button
+                        type="submit"
+                        class="send-button"
+                    >
+                        Send
+                    </button>
+
+                </form>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================
+     SOCKET.IO
+========================================= -->
+
+<script
+    src="https://cdn.socket.io/4.8.1/socket.io.min.js"
+></script>
+
+
+<!-- =========================================
+     CHAT JAVASCRIPT
+========================================= -->
+
+<script
+    src="{{ url_for('static', filename='js/chat.js') }}"
+></script>
+
+
+</body>
+
+</html>
