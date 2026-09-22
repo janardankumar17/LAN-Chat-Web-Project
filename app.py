@@ -22,13 +22,12 @@ import uuid
 app = Flask(__name__)
 
 app.config["SECRET_KEY"] = "lan-chat-secret-key"
-
-# Maximum file upload size = 10 MB
-app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB
 
 socketio = SocketIO(
     app,
-    cors_allowed_origins="*"
+    cors_allowed_origins="*",
+    async_mode="threading"
 )
 
 
@@ -57,8 +56,6 @@ UPLOAD_FOLDER = os.path.join(
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-
-# Create uploads folder if it doesn't exist
 os.makedirs(
     UPLOAD_FOLDER,
     exist_ok=True
@@ -71,17 +68,14 @@ os.makedirs(
 
 def get_db():
 
-    conn = sqlite3.connect(
-        DATABASE
-    )
-
+    conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
 
     return conn
 
 
 # =========================================
-# INITIALIZE DATABASE
+# DATABASE INITIALIZATION / MIGRATION
 # =========================================
 
 def init_db():
@@ -96,13 +90,60 @@ def init_db():
             sender TEXT NOT NULL,
             receiver TEXT,
             message TEXT NOT NULL,
-            timestamp TEXT NOT NULL
+            timestamp TEXT NOT NULL,
+            content_type TEXT NOT NULL DEFAULT 'text',
+            file_name TEXT,
+            file_url TEXT,
+            file_size INTEGER,
+            file_type TEXT,
+            is_deleted INTEGER NOT NULL DEFAULT 0,
+            is_edited INTEGER NOT NULL DEFAULT 0
         )
         """
     )
 
-    conn.commit()
+    # Check existing columns
+    columns = {
+        row["name"]
+        for row in conn.execute(
+            "PRAGMA table_info(messages)"
+        ).fetchall()
+    }
 
+    # Migrate old databases
+    migrations = {
+
+        "content_type":
+            "ALTER TABLE messages ADD COLUMN "
+            "content_type TEXT NOT NULL DEFAULT 'text'",
+
+        "file_name":
+            "ALTER TABLE messages ADD COLUMN file_name TEXT",
+
+        "file_url":
+            "ALTER TABLE messages ADD COLUMN file_url TEXT",
+
+        "file_size":
+            "ALTER TABLE messages ADD COLUMN file_size INTEGER",
+
+        "file_type":
+            "ALTER TABLE messages ADD COLUMN file_type TEXT",
+
+        "is_deleted":
+            "ALTER TABLE messages ADD COLUMN "
+            "is_deleted INTEGER NOT NULL DEFAULT 0",
+
+        "is_edited":
+            "ALTER TABLE messages ADD COLUMN "
+            "is_edited INTEGER NOT NULL DEFAULT 0"
+    }
+
+    for column, sql in migrations.items():
+
+        if column not in columns:
+            conn.execute(sql)
+
+    conn.commit()
     conn.close()
 
 
@@ -115,12 +156,17 @@ def save_message(
     sender,
     receiver,
     message,
-    timestamp
+    timestamp,
+    content_type="text",
+    file_name=None,
+    file_url=None,
+    file_size=None,
+    file_type=None
 ):
 
     conn = get_db()
 
-    conn.execute(
+    cursor = conn.execute(
         """
         INSERT INTO messages
         (
@@ -128,26 +174,62 @@ def save_message(
             sender,
             receiver,
             message,
-            timestamp
+            timestamp,
+            content_type,
+            file_name,
+            file_url,
+            file_size,
+            file_type
         )
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             message_type,
             sender,
             receiver,
             message,
-            timestamp
+            timestamp,
+            content_type,
+            file_name,
+            file_url,
+            file_size,
+            file_type
         )
     )
 
-    conn.commit()
+    message_id = cursor.lastrowid
 
+    conn.commit()
     conn.close()
+
+    return message_id
 
 
 # =========================================
-# GET PUBLIC HISTORY
+# CONVERT DATABASE ROW TO MESSAGE
+# =========================================
+
+def row_to_message(row):
+
+    return {
+        "id": row["id"],
+        "type": row["message_type"],
+        "username": row["sender"],
+        "receiver": row["receiver"],
+        "message": row["message"],
+        "time": row["timestamp"],
+        "content_type": row["content_type"],
+        "file_name": row["file_name"],
+        "file_url": row["file_url"],
+        "file_size": row["file_size"],
+        "file_type": row["file_type"],
+        "is_deleted": bool(row["is_deleted"]),
+        "is_edited": bool(row["is_edited"])
+    }
+
+
+# =========================================
+# GET PUBLIC MESSAGE HISTORY
 # =========================================
 
 def get_public_messages():
@@ -157,11 +239,19 @@ def get_public_messages():
     rows = conn.execute(
         """
         SELECT
+            id,
             message_type,
             sender,
             receiver,
             message,
-            timestamp
+            timestamp,
+            content_type,
+            file_name,
+            file_url,
+            file_size,
+            file_type,
+            is_deleted,
+            is_edited
         FROM messages
         WHERE message_type = 'public'
         ORDER BY id ASC
@@ -170,25 +260,14 @@ def get_public_messages():
 
     conn.close()
 
-    history = []
-
-    for row in rows:
-
-        history.append(
-            {
-                "type": row["message_type"],
-                "username": row["sender"],
-                "receiver": row["receiver"],
-                "message": row["message"],
-                "time": row["timestamp"]
-            }
-        )
-
-    return history
+    return [
+        row_to_message(row)
+        for row in rows
+    ]
 
 
 # =========================================
-# GET PRIVATE HISTORY
+# GET PRIVATE MESSAGE HISTORY
 # =========================================
 
 def get_private_messages(
@@ -201,11 +280,19 @@ def get_private_messages(
     rows = conn.execute(
         """
         SELECT
+            id,
             message_type,
             sender,
             receiver,
             message,
-            timestamp
+            timestamp,
+            content_type,
+            file_name,
+            file_url,
+            file_size,
+            file_type,
+            is_deleted,
+            is_edited
         FROM messages
         WHERE message_type = 'private'
         AND (
@@ -225,21 +312,10 @@ def get_private_messages(
 
     conn.close()
 
-    history = []
-
-    for row in rows:
-
-        history.append(
-            {
-                "type": row["message_type"],
-                "username": row["sender"],
-                "receiver": row["receiver"],
-                "message": row["message"],
-                "time": row["timestamp"]
-            }
-        )
-
-    return history
+    return [
+        row_to_message(row)
+        for row in rows
+    ]
 
 
 # =========================================
@@ -247,7 +323,6 @@ def get_private_messages(
 # =========================================
 
 # socket ID -> username
-
 users = {}
 
 
@@ -273,89 +348,90 @@ def index():
 )
 def upload_file():
 
-    # Check whether a file was provided
     if "file" not in request.files:
 
-        return jsonify(
-            {
-                "success": False,
-                "error": "No file was provided."
-            }
-        ), 400
-
+        return jsonify({
+            "success": False,
+            "error": "No file was provided."
+        }), 400
 
     file = request.files["file"]
 
+    if not file or file.filename == "":
 
-    # Check empty filename
-    if file.filename == "":
+        return jsonify({
+            "success": False,
+            "error": "No file was selected."
+        }), 400
 
-        return jsonify(
-            {
-                "success": False,
-                "error": "No file was selected."
-            }
-        ), 400
-
-
-    # Make filename safe
     original_filename = file.filename
 
     safe_filename = secure_filename(
         original_filename
     )
 
-
-    # Make sure filename is still valid
     if not safe_filename:
 
-        return jsonify(
-            {
-                "success": False,
-                "error": "Invalid file name."
-            }
-        ), 400
+        return jsonify({
+            "success": False,
+            "error": "Invalid file name."
+        }), 400
 
-
-    # Create unique filename
     unique_filename = (
-        str(uuid.uuid4())
-        + "_"
-        + safe_filename
+        f"{uuid.uuid4().hex}_{safe_filename}"
     )
 
-
-    # Complete file path
     file_path = os.path.join(
         app.config["UPLOAD_FOLDER"],
         unique_filename
     )
 
+    try:
 
-    # Save file
-    file.save(file_path)
+        file.save(file_path)
+
+        file_size = os.path.getsize(
+            file_path
+        )
+
+    except Exception as error:
+
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        return jsonify({
+            "success": False,
+            "error": f"Could not save file: {error}"
+        }), 500
+
+    return jsonify({
+        "success": True,
+        "file_name": original_filename,
+        "stored_name": unique_filename,
+        "file_size": file_size,
+        "file_type": (
+            file.mimetype
+            or "application/octet-stream"
+        ),
+        "file_url": (
+            f"/uploads/{unique_filename}"
+        )
+    })
 
 
-    # Get file size
-    file_size = os.path.getsize(
-        file_path
-    )
+# =========================================
+# FILE SIZE ERROR
+# =========================================
 
+@app.errorhandler(413)
+def file_too_large(error):
 
-    # Return file information
-    return jsonify(
-        {
-            "success": True,
-            "file_name": original_filename,
-            "stored_name": unique_filename,
-            "file_size": file_size,
-            "file_type": file.content_type,
-            "file_url": (
-                "/uploads/"
-                + unique_filename
-            )
-        }
-    )
+    return jsonify({
+        "success": False,
+        "error":
+            "File is too large. "
+            "Maximum allowed size is 10 MB."
+    }), 413
 
 
 # =========================================
@@ -363,7 +439,7 @@ def upload_file():
 # =========================================
 
 @app.route(
-    "/uploads/<filename>"
+    "/uploads/<path:filename>"
 )
 def uploaded_file(filename):
 
@@ -382,7 +458,7 @@ def uploaded_file(filename):
 def handle_join(username):
 
     username = (
-        username.strip()[:20]
+        str(username).strip()[:20]
         or "Guest"
     )
 
@@ -393,8 +469,7 @@ def handle_join(username):
         {
             "message":
                 f"{username} joined the chat.",
-            "time":
-                now()
+            "time": now()
         },
         broadcast=True
     )
@@ -439,7 +514,6 @@ def handle_private_history(data):
     if not current_user:
         return
 
-
     other_user = str(
         data.get(
             "username",
@@ -447,16 +521,13 @@ def handle_private_history(data):
         )
     ).strip()
 
-
     if not other_user:
         return
-
 
     history = get_private_messages(
         current_user,
         other_user
     )
-
 
     emit(
         "message_history",
@@ -469,7 +540,7 @@ def handle_private_history(data):
 
 
 # =========================================
-# SEND MESSAGE
+# SEND TEXT MESSAGE
 # =========================================
 
 @socketio.on("send_message")
@@ -491,15 +562,10 @@ def handle_message(data):
         "receiver"
     )
 
-
-    # Don't send empty messages
     if not message:
         return
 
-
-    # Limit message length
     message = message[:1000]
-
 
     # =====================================
     # PRIVATE MESSAGE
@@ -507,7 +573,10 @@ def handle_message(data):
 
     if receiver:
 
-        # Find receiver socket ID
+        receiver = str(
+            receiver
+        ).strip()
+
         target_sid = next(
             (
                 sid
@@ -518,55 +587,46 @@ def handle_message(data):
             None
         )
 
-
-        # Receiver exists
         if target_sid:
 
             current_time = now()
 
-            payload = {
-                "type":
-                    "private",
-
-                "username":
-                    sender,
-
-                "receiver":
-                    receiver,
-
-                "message":
-                    message,
-
-                "time":
-                    current_time
-            }
-
-
-            # Save private message
-            save_message(
+            message_id = save_message(
                 message_type="private",
                 sender=sender,
                 receiver=receiver,
                 message=message,
-                timestamp=current_time
+                timestamp=current_time,
+                content_type="text"
             )
 
+            payload = {
+                "id": message_id,
+                "type": "private",
+                "username": sender,
+                "receiver": receiver,
+                "message": message,
+                "time": current_time,
+                "content_type": "text",
+                "file_name": None,
+                "file_url": None,
+                "file_size": None,
+                "file_type": None,
+                "is_deleted": False,
+                "is_edited": False
+            }
 
-            # Send to receiver
             socketio.emit(
                 "new_message",
                 payload,
                 to=target_sid
             )
 
-
-            # Send copy to sender
             socketio.emit(
                 "new_message",
                 payload,
                 to=request.sid
             )
-
 
         else:
 
@@ -578,7 +638,6 @@ def handle_message(data):
                 }
             )
 
-
     # =====================================
     # PUBLIC MESSAGE
     # =====================================
@@ -587,39 +646,591 @@ def handle_message(data):
 
         current_time = now()
 
-        payload = {
-            "type":
-                "public",
-
-            "username":
-                sender,
-
-            "receiver":
-                None,
-
-            "message":
-                message,
-
-            "time":
-                current_time
-        }
-
-
-        # Save public message
-        save_message(
+        message_id = save_message(
             message_type="public",
             sender=sender,
             receiver=None,
             message=message,
-            timestamp=current_time
+            timestamp=current_time,
+            content_type="text"
         )
 
+        payload = {
+            "id": message_id,
+            "type": "public",
+            "username": sender,
+            "receiver": None,
+            "message": message,
+            "time": current_time,
+            "content_type": "text",
+            "file_name": None,
+            "file_url": None,
+            "file_size": None,
+            "file_type": None,
+            "is_deleted": False,
+            "is_edited": False
+        }
 
-        # Send to everyone
         emit(
             "new_message",
             payload,
             broadcast=True
+        )
+
+
+# =========================================
+# SEND FILE MESSAGE
+# =========================================
+
+@socketio.on("send_file")
+def handle_file_message(data):
+
+    sender = users.get(
+        request.sid
+    )
+
+    if not sender:
+        return
+
+    receiver = data.get(
+        "receiver"
+    )
+
+    file_name = str(
+        data.get(
+            "file_name",
+            ""
+        )
+    ).strip()
+
+    stored_name = str(
+        data.get(
+            "stored_name",
+            ""
+        )
+    ).strip()
+
+    file_size = data.get(
+        "file_size"
+    )
+
+    file_type = str(
+        data.get(
+            "file_type",
+            "application/octet-stream"
+        )
+    )
+
+    # Never trust a path from the browser
+    safe_stored_name = os.path.basename(
+        stored_name
+    )
+
+    if (
+        not file_name
+        or not safe_stored_name
+        or safe_stored_name != stored_name
+    ):
+
+        emit(
+            "chat_error",
+            {
+                "message":
+                    "Invalid file information."
+            }
+        )
+        return
+
+    file_path = os.path.join(
+        app.config["UPLOAD_FOLDER"],
+        safe_stored_name
+    )
+
+    if not os.path.isfile(file_path):
+
+        emit(
+            "chat_error",
+            {
+                "message":
+                    "Uploaded file could not be found."
+            }
+        )
+        return
+
+    file_url = (
+        f"/uploads/{safe_stored_name}"
+    )
+
+    try:
+
+        file_size = int(file_size)
+
+    except (TypeError, ValueError):
+
+        file_size = os.path.getsize(
+            file_path
+        )
+
+    # =====================================
+    # PRIVATE FILE
+    # =====================================
+
+    if receiver:
+
+        receiver = str(
+            receiver
+        ).strip()
+
+        target_sid = next(
+            (
+                sid
+                for sid, username
+                in users.items()
+                if username == receiver
+            ),
+            None
+        )
+
+        if not target_sid:
+
+            emit(
+                "chat_error",
+                {
+                    "message":
+                        f"{receiver} is no longer online."
+                }
+            )
+            return
+
+        current_time = now()
+
+        message_id = save_message(
+            message_type="private",
+            sender=sender,
+            receiver=receiver,
+            message=file_name,
+            timestamp=current_time,
+            content_type="file",
+            file_name=file_name,
+            file_url=file_url,
+            file_size=file_size,
+            file_type=file_type
+        )
+
+        payload = {
+            "id": message_id,
+            "type": "private",
+            "username": sender,
+            "receiver": receiver,
+            "message": file_name,
+            "time": current_time,
+            "content_type": "file",
+            "file_name": file_name,
+            "file_url": file_url,
+            "file_size": file_size,
+            "file_type": file_type,
+            "is_deleted": False,
+            "is_edited": False
+        }
+
+        socketio.emit(
+            "new_message",
+            payload,
+            to=target_sid
+        )
+
+        socketio.emit(
+            "new_message",
+            payload,
+            to=request.sid
+        )
+
+    # =====================================
+    # PUBLIC FILE
+    # =====================================
+
+    else:
+
+        current_time = now()
+
+        message_id = save_message(
+            message_type="public",
+            sender=sender,
+            receiver=None,
+            message=file_name,
+            timestamp=current_time,
+            content_type="file",
+            file_name=file_name,
+            file_url=file_url,
+            file_size=file_size,
+            file_type=file_type
+        )
+
+        payload = {
+            "id": message_id,
+            "type": "public",
+            "username": sender,
+            "receiver": None,
+            "message": file_name,
+            "time": current_time,
+            "content_type": "file",
+            "file_name": file_name,
+            "file_url": file_url,
+            "file_size": file_size,
+            "file_type": file_type,
+            "is_deleted": False,
+            "is_edited": False
+        }
+
+        emit(
+            "new_message",
+            payload,
+            broadcast=True
+        )
+
+
+# =========================================
+# DELETE / UNSEND MESSAGE
+# =========================================
+
+@socketio.on("delete_message")
+def handle_delete_message(data):
+
+    sender = users.get(
+        request.sid
+    )
+
+    if not sender:
+        return
+
+    try:
+
+        message_id = int(
+            data.get("id")
+        )
+
+    except (TypeError, ValueError):
+
+        emit(
+            "chat_error",
+            {
+                "message":
+                    "Invalid message ID."
+            }
+        )
+        return
+
+    conn = get_db()
+
+    row = conn.execute(
+        """
+        SELECT
+            id,
+            message_type,
+            sender,
+            receiver,
+            content_type,
+            file_url,
+            is_deleted
+        FROM messages
+        WHERE id = ?
+        """,
+        (message_id,)
+    ).fetchone()
+
+    if not row:
+
+        conn.close()
+
+        emit(
+            "chat_error",
+            {
+                "message":
+                    "Message could not be found."
+            }
+        )
+        return
+
+    # Only sender can delete
+    if row["sender"] != sender:
+
+        conn.close()
+
+        emit(
+            "chat_error",
+            {
+                "message":
+                    "You can only delete your own messages."
+            }
+        )
+        return
+
+    if row["is_deleted"]:
+
+        conn.close()
+        return
+
+    # Soft delete
+    conn.execute(
+        """
+        UPDATE messages
+        SET
+            message = ?,
+            is_deleted = 1,
+            file_url = NULL
+        WHERE id = ?
+        """,
+        (
+            "This message was deleted.",
+            message_id
+        )
+    )
+
+    conn.commit()
+    conn.close()
+
+    # Delete associated uploaded file
+    file_url = row["file_url"]
+
+    if file_url:
+
+        stored_name = os.path.basename(
+            file_url
+        )
+
+        file_path = os.path.join(
+            app.config["UPLOAD_FOLDER"],
+            stored_name
+        )
+
+        if os.path.isfile(file_path):
+
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+
+    payload = {
+        "id": message_id,
+        "message": "This message was deleted.",
+        "is_deleted": True
+    }
+
+    # Public message
+    if row["message_type"] == "public":
+
+        socketio.emit(
+            "message_deleted",
+            payload
+        )
+
+    # Private message
+    else:
+
+        target_sid = next(
+            (
+                sid
+                for sid, username
+                in users.items()
+                if username == row["receiver"]
+            ),
+            None
+        )
+
+        if target_sid:
+
+            socketio.emit(
+                "message_deleted",
+                payload,
+                to=target_sid
+            )
+
+        socketio.emit(
+            "message_deleted",
+            payload,
+            to=request.sid
+        )
+
+
+# =========================================
+# EDIT MESSAGE
+# =========================================
+
+@socketio.on("edit_message")
+def handle_edit_message(data):
+
+    sender = users.get(
+        request.sid
+    )
+
+    if not sender:
+        return
+
+    try:
+
+        message_id = int(
+            data.get("id")
+        )
+
+    except (TypeError, ValueError):
+
+        emit(
+            "chat_error",
+            {
+                "message":
+                    "Invalid message ID."
+            }
+        )
+        return
+
+    new_message = str(
+        data.get(
+            "message",
+            ""
+        )
+    ).strip()
+
+    if not new_message:
+
+        emit(
+            "chat_error",
+            {
+                "message":
+                    "Edited message cannot be empty."
+            }
+        )
+        return
+
+    new_message = new_message[:1000]
+
+    conn = get_db()
+
+    row = conn.execute(
+        """
+        SELECT
+            id,
+            message_type,
+            sender,
+            receiver,
+            content_type,
+            is_deleted
+        FROM messages
+        WHERE id = ?
+        """,
+        (message_id,)
+    ).fetchone()
+
+    if not row:
+
+        conn.close()
+
+        emit(
+            "chat_error",
+            {
+                "message":
+                    "Message could not be found."
+            }
+        )
+        return
+
+    # Only sender can edit
+    if row["sender"] != sender:
+
+        conn.close()
+
+        emit(
+            "chat_error",
+            {
+                "message":
+                    "You can only edit your own messages."
+            }
+        )
+        return
+
+    # Deleted messages cannot be edited
+    if row["is_deleted"]:
+
+        conn.close()
+
+        emit(
+            "chat_error",
+            {
+                "message":
+                    "Deleted messages cannot be edited."
+            }
+        )
+        return
+
+    # Only text messages can be edited
+    if row["content_type"] != "text":
+
+        conn.close()
+
+        emit(
+            "chat_error",
+            {
+                "message":
+                    "Only text messages can be edited."
+            }
+        )
+        return
+
+    conn.execute(
+        """
+        UPDATE messages
+        SET
+            message = ?,
+            is_edited = 1
+        WHERE id = ?
+        """,
+        (
+            new_message,
+            message_id
+        )
+    )
+
+    conn.commit()
+    conn.close()
+
+    payload = {
+        "id": message_id,
+        "message": new_message,
+        "is_edited": True
+    }
+
+    # Public message
+    if row["message_type"] == "public":
+
+        socketio.emit(
+            "message_edited",
+            payload
+        )
+
+    # Private message
+    else:
+
+        target_sid = next(
+            (
+                sid
+                for sid, username
+                in users.items()
+                if username == row["receiver"]
+            ),
+            None
+        )
+
+        if target_sid:
+
+            socketio.emit(
+                "message_edited",
+                payload,
+                to=target_sid
+            )
+
+        socketio.emit(
+            "message_edited",
+            payload,
+            to=request.sid
         )
 
 
@@ -635,7 +1246,6 @@ def handle_disconnect():
         None
     )
 
-
     if username:
 
         emit(
@@ -643,12 +1253,10 @@ def handle_disconnect():
             {
                 "message":
                     f"{username} left the chat.",
-                "time":
-                    now()
+                "time": now()
             },
             broadcast=True
         )
-
 
         emit(
             "user_list",
@@ -669,24 +1277,25 @@ def now():
 
 
 # =========================================
+# INITIALIZE DATABASE
+# =========================================
+
+init_db()
+
+
+# =========================================
 # START SERVER
 # =========================================
 
 if __name__ == "__main__":
 
-    # Create database/table if needed
-    init_db()
-
-
     print(
         "Local:   http://127.0.0.1:5000"
     )
 
-
     print(
         "Network: http://<YOUR-LAN-IP>:5000"
     )
-
 
     socketio.run(
         app,

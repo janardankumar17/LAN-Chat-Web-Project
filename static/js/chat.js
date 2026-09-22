@@ -13,6 +13,9 @@ let currentUsername = "";
 let selectedUser = null;
 let selectedFile = null;
 
+// ID of the message currently being edited
+let editingMessageId = null;
+
 
 // =========================================
 // CONVERSATION STORAGE
@@ -153,6 +156,8 @@ function joinChat() {
 
     selectedUser = null;
 
+    editingMessageId = null;
+
 
     updateChatHeader();
 
@@ -272,31 +277,8 @@ fileInput.addEventListener(
 
 
         console.log(
-            "================================="
-        );
-
-        console.log(
-            "File selected successfully"
-        );
-
-        console.log(
-            "File name:",
+            "File selected:",
             file.name
-        );
-
-        console.log(
-            "File size:",
-            file.size,
-            "bytes"
-        );
-
-        console.log(
-            "File type:",
-            file.type || "Unknown"
-        );
-
-        console.log(
-            "================================="
         );
 
     }
@@ -347,17 +329,9 @@ function removeSelectedFile() {
 
     selectedFile = null;
 
-
     fileInput.value = "";
 
-
     hideFilePreview();
-
-
-    console.log(
-        "Selected file removed"
-    );
-
 
     messageInput.focus();
 
@@ -380,31 +354,51 @@ removeFileButton.addEventListener(
 
 function formatFileSize(bytes) {
 
+    const size =
+        Number(bytes);
+
+
     if (
-        typeof bytes !== "number" ||
-        bytes < 0
+        !Number.isFinite(size) ||
+        size < 0
     ) {
 
         return "";
+
     }
 
 
-    if (bytes < 1024) {
+    if (size < 1024) {
 
-        return `${bytes} B`;
+        return `${size} B`;
 
     }
 
 
     if (
-        bytes <
+        size <
         1024 * 1024
     ) {
 
         return (
             `${(
-                bytes / 1024
+                size / 1024
             ).toFixed(1)} KB`
+        );
+
+    }
+
+
+    if (
+        size <
+        1024 * 1024 * 1024
+    ) {
+
+        return (
+            `${(
+                size /
+                (1024 * 1024)
+            ).toFixed(1)} MB`
         );
 
     }
@@ -412,9 +406,9 @@ function formatFileSize(bytes) {
 
     return (
         `${(
-            bytes /
-            (1024 * 1024)
-        ).toFixed(1)} MB`
+            size /
+            (1024 * 1024 * 1024)
+        ).toFixed(1)} GB`
     );
 
 }
@@ -472,36 +466,8 @@ async function uploadFile(file) {
 
 
         console.log(
-            "================================="
-        );
-
-        console.log(
-            "File uploaded successfully"
-        );
-
-        console.log(
-            "File name:",
-            result.file_name
-        );
-
-        console.log(
-            "File size:",
-            result.file_size,
-            "bytes"
-        );
-
-        console.log(
-            "File type:",
-            result.file_type
-        );
-
-        console.log(
-            "File URL:",
-            result.file_url
-        );
-
-        console.log(
-            "================================="
+            "File uploaded successfully:",
+            result
         );
 
 
@@ -530,7 +496,7 @@ async function uploadFile(file) {
 
 
 // =========================================
-// DETECT FILE MESSAGE
+// DETECT LEGACY FILE MESSAGE
 // =========================================
 
 function getFileData(data) {
@@ -612,6 +578,8 @@ publicChatButton.addEventListener(
 
         selectedUser = null;
 
+        editingMessageId = null;
+
 
         clearUnread(
             "public"
@@ -639,6 +607,12 @@ publicChatButton.addEventListener(
         updateChatHeader();
 
 
+        messageInput.value = "";
+
+        messageInput.placeholder =
+            "Type a message...";
+
+
         renderConversation();
 
 
@@ -649,7 +623,7 @@ publicChatButton.addEventListener(
 
 
 // =========================================
-// SEND MESSAGE
+// SEND / EDIT MESSAGE
 // =========================================
 
 messageForm.addEventListener(
@@ -664,13 +638,58 @@ messageForm.addEventListener(
 
 
         // =====================================
+        // EDIT EXISTING MESSAGE
+        // =====================================
+
+        if (
+            editingMessageId !== null
+        ) {
+
+            if (!message) {
+
+                return;
+
+            }
+
+
+            socket.emit(
+                "edit_message",
+                {
+                    id:
+                        editingMessageId,
+
+                    message:
+                        message
+                }
+            );
+
+
+            editingMessageId =
+                null;
+
+
+            messageInput.value =
+                "";
+
+            messageInput.placeholder =
+                "Type a message...";
+
+
+            messageInput.focus();
+
+
+            return;
+        }
+
+
+        // =====================================
         // FILE MESSAGE
         // =====================================
 
         if (selectedFile) {
 
             console.log(
-                "File selected:",
+                "Sending file:",
                 selectedFile.name
             );
 
@@ -688,41 +707,21 @@ messageForm.addEventListener(
             }
 
 
-            const messagePayload =
-                JSON.stringify(
-                    {
-
-                        __file__: true,
-
-                        file_name:
-                            uploadedFile.file_name,
-
-                        file_size:
-                            uploadedFile.file_size,
-
-                        file_type:
-                            uploadedFile.file_type,
-
-                        file_url:
-                            uploadedFile.file_url
-
-                    }
-                );
-
-
-            console.log(
-                "Sending file to:",
-                selectedUser ||
-                "PUBLIC"
-            );
-
-
             socket.emit(
-                "send_message",
+                "send_file",
                 {
 
-                    message:
-                        messagePayload,
+                    file_name:
+                        uploadedFile.file_name,
+
+                    stored_name:
+                        uploadedFile.stored_name,
+
+                    file_size:
+                        uploadedFile.file_size,
+
+                    file_type:
+                        uploadedFile.file_type,
 
                     receiver:
                         selectedUser
@@ -731,8 +730,6 @@ messageForm.addEventListener(
             );
 
 
-            // Clear selected file
-
             selectedFile = null;
 
             fileInput.value = "";
@@ -740,13 +737,13 @@ messageForm.addEventListener(
             hideFilePreview();
 
 
-            messageInput.value = "";
+            messageInput.value =
+                "";
 
             messageInput.focus();
 
 
             return;
-
         }
 
 
@@ -765,15 +762,6 @@ messageForm.addEventListener(
         // NORMAL TEXT MESSAGE
         // =====================================
 
-        console.log(
-            "Sending message:",
-            message,
-            "to:",
-            selectedUser ||
-            "PUBLIC"
-        );
-
-
         socket.emit(
             "send_message",
             {
@@ -788,7 +776,8 @@ messageForm.addEventListener(
         );
 
 
-        messageInput.value = "";
+        messageInput.value =
+            "";
 
         messageInput.focus();
 
@@ -811,7 +800,7 @@ socket.on(
 
 
         // =====================================
-        // FILE DETECTION
+        // LEGACY FILE DETECTION
         // =====================================
 
         const fileData =
@@ -930,7 +919,6 @@ socket.on(
 
         }
 
-
         else {
 
             if (
@@ -977,7 +965,7 @@ socket.on(
 
 
         // =====================================
-        // NORMALIZE FILE HISTORY
+        // NORMALIZE LEGACY FILE HISTORY
         // =====================================
 
         history.forEach(
@@ -1074,6 +1062,140 @@ socket.on(
 
 
 // =========================================
+// MESSAGE EDITED
+// =========================================
+
+socket.on(
+    "message_edited",
+    (data) => {
+
+        console.log(
+            "Message edited:",
+            data
+        );
+
+
+        Object.keys(
+            conversations
+        ).forEach(
+            (conversationKey) => {
+
+                const conversation =
+                    conversations[
+                        conversationKey
+                    ];
+
+
+                if (
+                    !Array.isArray(
+                        conversation
+                    )
+                ) {
+
+                    return;
+
+                }
+
+
+                const message =
+                    conversation.find(
+                        (item) =>
+                            Number(item.id) ===
+                            Number(data.id)
+                    );
+
+
+                if (message) {
+
+                    message.message =
+                        data.message;
+
+                    message.is_edited =
+                        true;
+
+                }
+
+            }
+        );
+
+
+        renderConversation();
+
+    }
+);
+
+
+// =========================================
+// MESSAGE DELETED
+// =========================================
+
+socket.on(
+    "message_deleted",
+    (data) => {
+
+        console.log(
+            "Message deleted:",
+            data
+        );
+
+
+        Object.keys(
+            conversations
+        ).forEach(
+            (conversationKey) => {
+
+                const conversation =
+                    conversations[
+                        conversationKey
+                    ];
+
+
+                if (
+                    !Array.isArray(
+                        conversation
+                    )
+                ) {
+
+                    return;
+
+                }
+
+
+                const message =
+                    conversation.find(
+                        (item) =>
+                            Number(item.id) ===
+                            Number(data.id)
+                    );
+
+
+                if (message) {
+
+                    message.message =
+                        "This message was deleted.";
+
+                    message.is_deleted =
+                        true;
+
+                    message.is_edited =
+                        false;
+
+                    message.file_url =
+                        null;
+
+                }
+
+            }
+        );
+
+
+        renderConversation();
+
+    }
+);
+
+
+// =========================================
 // SYSTEM MESSAGE
 // =========================================
 
@@ -1085,7 +1207,8 @@ socket.on(
             !conversations.public
         ) {
 
-            conversations.public = [];
+            conversations.public =
+                [];
 
         }
 
@@ -1124,7 +1247,8 @@ socket.on(
     "user_list",
     (users) => {
 
-        userList.innerHTML = "";
+        userList.innerHTML =
+            "";
 
 
         userCount.textContent =
@@ -1259,6 +1383,16 @@ function selectUser(
 
     selectedUser =
         username;
+
+    editingMessageId =
+        null;
+
+
+    messageInput.value =
+        "";
+
+    messageInput.placeholder =
+        "Type a message...";
 
 
     console.log(
@@ -1603,6 +1737,123 @@ function updateChatHeader() {
 
 
 // =========================================
+// START EDITING MESSAGE
+// =========================================
+
+function startEditingMessage(
+    data
+) {
+
+    if (
+        !data ||
+        data.is_deleted
+    ) {
+
+        return;
+
+    }
+
+
+    if (
+        data.content_type ===
+        "file"
+    ) {
+
+        return;
+
+    }
+
+
+    editingMessageId =
+        data.id;
+
+
+    messageInput.value =
+        data.message;
+
+
+    messageInput.placeholder =
+        "Edit your message...";
+
+
+    messageInput.focus();
+
+
+    messageInput.setSelectionRange(
+        messageInput.value.length,
+        messageInput.value.length
+    );
+
+}
+
+
+// =========================================
+// DELETE MESSAGE
+// =========================================
+
+function deleteMessage(
+    data
+) {
+
+    if (
+        !data ||
+        !data.id ||
+        data.is_deleted
+    ) {
+
+        return;
+
+    }
+
+
+    const confirmed =
+        confirm(
+            "Are you sure you want to delete this message?"
+        );
+
+
+    if (!confirmed) {
+
+        return;
+
+    }
+
+
+    socket.emit(
+        "delete_message",
+        {
+            id:
+                data.id
+        }
+    );
+
+}
+
+
+// =========================================
+// CLOSE ALL MESSAGE MENUS
+// =========================================
+
+function closeAllMessageMenus() {
+
+    document
+        .querySelectorAll(
+            ".message-menu.show"
+        )
+        .forEach(
+            (menu) => {
+
+                menu.classList.remove(
+                    "show"
+                );
+
+            }
+        );
+
+}
+
+
+// =========================================
 // RENDER CONVERSATION
 // =========================================
 
@@ -1619,8 +1870,13 @@ function renderConversation() {
         ] || [];
 
 
-    messages.innerHTML = "";
+    messages.innerHTML =
+        "";
 
+
+    // =====================================
+    // NO MESSAGES
+    // =====================================
 
     if (
         conversation.length === 0
@@ -1632,6 +1888,10 @@ function renderConversation() {
 
     }
 
+
+    // =====================================
+    // DISPLAY MESSAGES
+    // =====================================
 
     conversation.forEach(
         (data) => {
@@ -1679,16 +1939,17 @@ function renderConversation() {
                 );
 
 
-            if (
+            const isOwnMessage =
                 data.username ===
-                currentUsername
-            ) {
+                currentUsername;
+
+
+            if (isOwnMessage) {
 
                 wrapper.className =
                     "message own-message";
 
             }
-
             else {
 
                 wrapper.className =
@@ -1711,12 +1972,41 @@ function renderConversation() {
                 "message-meta";
 
 
-            meta.textContent =
+            let metaText =
                 `${data.username} • ${data.time}`;
 
 
+            if (
+                data.is_edited &&
+                !data.is_deleted
+            ) {
+
+                metaText +=
+                    " • edited";
+
+            }
+
+
+            meta.textContent =
+                metaText;
+
+
             // =================================
-            // BUBBLE
+            // MESSAGE ROW
+            // =================================
+
+            const messageRow =
+                document.createElement(
+                    "div"
+                );
+
+
+            messageRow.className =
+                "message-content-row";
+
+
+            // =================================
+            // MESSAGE BUBBLE
             // =================================
 
             const bubble =
@@ -1730,14 +2020,66 @@ function renderConversation() {
 
 
             // =================================
+            // DELETED MESSAGE
+            // =================================
+
+            if (
+                data.is_deleted
+            ) {
+
+                bubble.classList.add(
+                    "deleted-message"
+                );
+
+
+                bubble.textContent =
+                    "This message was deleted.";
+
+            }
+
+
+            // =================================
             // FILE MESSAGE
             // =================================
 
-            const fileData =
-                getFileData(data);
+            else if (
+                data.content_type ===
+                "file" ||
+                data.file === true
+            ) {
+
+                const fileData =
+                    getFileData(data);
 
 
-            if (fileData) {
+                const fileName =
+                    data.file_name ||
+                    (
+                        fileData
+                            ? fileData.file_name
+                            : null
+                    ) ||
+                    data.message ||
+                    "File";
+
+
+                const fileSize =
+                    data.file_size ||
+                    (
+                        fileData
+                            ? fileData.file_size
+                            : 0
+                    );
+
+
+                const fileUrl =
+                    data.file_url ||
+                    (
+                        fileData
+                            ? fileData.file_url
+                            : "#"
+                    );
+
 
                 const fileIcon =
                     document.createElement(
@@ -1757,45 +2099,45 @@ function renderConversation() {
                     "6px";
 
 
-                const fileName =
+                const fileNameElement =
                     document.createElement(
                         "div"
                     );
 
 
-                fileName.textContent =
-                    fileData.file_name;
+                fileNameElement.textContent =
+                    fileName;
 
 
-                fileName.style.fontWeight =
+                fileNameElement.style.fontWeight =
                     "600";
 
 
-                fileName.style.marginBottom =
+                fileNameElement.style.marginBottom =
                     "4px";
 
 
-                const fileSize =
+                const fileSizeElement =
                     document.createElement(
                         "div"
                     );
 
 
-                fileSize.textContent =
+                fileSizeElement.textContent =
                     formatFileSize(
-                        fileData.file_size
+                        fileSize
                     );
 
 
-                fileSize.style.fontSize =
+                fileSizeElement.style.fontSize =
                     "12px";
 
 
-                fileSize.style.opacity =
+                fileSizeElement.style.opacity =
                     "0.7";
 
 
-                fileSize.style.marginBottom =
+                fileSizeElement.style.marginBottom =
                     "8px";
 
 
@@ -1806,7 +2148,7 @@ function renderConversation() {
 
 
                 downloadLink.href =
-                    fileData.file_url;
+                    fileUrl;
 
 
                 downloadLink.textContent =
@@ -1819,6 +2161,10 @@ function renderConversation() {
 
                 downloadLink.rel =
                     "noopener noreferrer";
+
+
+                downloadLink.download =
+                    fileName;
 
 
                 downloadLink.style.textDecoration =
@@ -1835,12 +2181,12 @@ function renderConversation() {
 
 
                 bubble.appendChild(
-                    fileName
+                    fileNameElement
                 );
 
 
                 bubble.appendChild(
-                    fileSize
+                    fileSizeElement
                 );
 
 
@@ -1863,13 +2209,218 @@ function renderConversation() {
             }
 
 
+            // =================================
+            // MESSAGE ACTIONS
+            // ONLY OWN TEXT MESSAGES
+            // =================================
+
+            const isTextMessage =
+                data.content_type !==
+                    "file" &&
+                data.file !== true;
+
+
+            if (
+                isOwnMessage &&
+                isTextMessage &&
+                !data.is_deleted
+            ) {
+
+                const actionWrapper =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                actionWrapper.className =
+                    "message-actions";
+
+
+                const actionButton =
+                    document.createElement(
+                        "button"
+                    );
+
+
+                actionButton.type =
+                    "button";
+
+
+                actionButton.className =
+                    "message-action-button";
+
+
+                actionButton.textContent =
+                    "⋮";
+
+
+                actionButton.title =
+                    "Message options";
+
+
+                // =================================
+                // MENU
+                // =================================
+
+                const menu =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                menu.className =
+                    "message-menu";
+
+
+                // =================================
+                // EDIT BUTTON
+                // =================================
+
+                const editButton =
+                    document.createElement(
+                        "button"
+                    );
+
+
+                editButton.type =
+                    "button";
+
+
+                editButton.className =
+                    "message-menu-item";
+
+
+                editButton.innerHTML =
+                    "✏️ Edit";
+
+
+                editButton.addEventListener(
+                    "click",
+                    (event) => {
+
+                        event.stopPropagation();
+
+
+                        startEditingMessage(
+                            data
+                        );
+
+
+                        closeAllMessageMenus();
+
+                    }
+                );
+
+
+                // =================================
+                // DELETE BUTTON
+                // =================================
+
+                const deleteButton =
+                    document.createElement(
+                        "button"
+                    );
+
+
+                deleteButton.type =
+                    "button";
+
+
+                deleteButton.className =
+                    "message-menu-item delete-item";
+
+
+                deleteButton.innerHTML =
+                    "🗑️ Delete";
+
+
+                deleteButton.addEventListener(
+                    "click",
+                    (event) => {
+
+                        event.stopPropagation();
+
+
+                        deleteMessage(
+                            data
+                        );
+
+
+                        closeAllMessageMenus();
+
+                    }
+                );
+
+
+                menu.appendChild(
+                    editButton
+                );
+
+
+                menu.appendChild(
+                    deleteButton
+                );
+
+
+                actionButton.addEventListener(
+                    "click",
+                    (event) => {
+
+                        event.stopPropagation();
+
+
+                        closeAllMessageMenus();
+
+
+                        menu.classList.toggle(
+                            "show"
+                        );
+
+                    }
+                );
+
+
+                actionWrapper.appendChild(
+                    actionButton
+                );
+
+
+                actionWrapper.appendChild(
+                    menu
+                );
+
+
+                messageRow.appendChild(
+                    bubble
+                );
+
+
+                messageRow.appendChild(
+                    actionWrapper
+                );
+
+            }
+
+            else {
+
+                messageRow.appendChild(
+                    bubble
+                );
+
+            }
+
+
+            // =================================
+            // ADD TO WRAPPER
+            // =================================
+
             wrapper.appendChild(
                 meta
             );
 
 
             wrapper.appendChild(
-                bubble
+                messageRow
             );
 
 
@@ -1998,6 +2549,20 @@ socket.on(
         alert(
             data.message
         );
+
+    }
+);
+
+
+// =========================================
+// CLOSE MENU WHEN CLICKING OUTSIDE
+// =========================================
+
+document.addEventListener(
+    "click",
+    () => {
+
+        closeAllMessageMenus();
 
     }
 );
